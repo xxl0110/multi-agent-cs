@@ -1,0 +1,43 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: multi-agent-cs
+  datasource:
+    url: jdbc:mysql://localhost:3306/cs_agent?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    database: 0
+    timeout: 3000
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 4
+        min-idle: 0
+
+# MyBatis Plus
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.cs.agent.entity
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+
+# AI 模型配置
+ai:
+  # 模拟模式：true=不调API用预设回复，false=调真实API
+  mock-mode: false
+  api-key: sk-f29c7bc020e34393ad0ff8da7cd99c51
+  model-name: deepseek-v4-flash
+  base-url: https://api.deepseek.com
+  temperature: 0.3
+
+# 会话存储：true=Redis，false/不配=内存（默认）
+cs:
+  redis-session: true
