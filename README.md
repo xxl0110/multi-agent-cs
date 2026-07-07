@@ -285,21 +285,6 @@ CREATE TABLE cs_order (
 
 ---
 
-## 与第一个项目的区别
-
-| 维度 | 智护云联 | 本项目 |
-|------|---------|--------|
-| **类型** | 全栈业务系统 | AI Agent 架构项目 |
-| **AI 深度** | 基础 RAG | 多 Agent 编排 + Tool Calling + HITL |
-| **核心框架** | LangChain4j | **LangGraph4j** + LangChain4j |
-| **复杂度** | CRUD + 简单 AI | 状态图 + 条件路由 + 审批 |
-| **数据存储** | RuoYi 脚手架 | 从零搭建 + MySQL |
-| **前端** | RuoYi Vue | 从零搭建 Vite + Vue3 |
-| **展示重点** | 业务系统设计 | **AI 架构设计** |
-
-
----
-
 ## 测试数据
 
 ```bash
