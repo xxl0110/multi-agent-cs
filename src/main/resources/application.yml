@@ -58,6 +58,12 @@ milvus:
 
 # ==================== 知识库 ====================
 knowledge:
+  max-topk: 10          # 全局检索数量硬上限
+  default-topk: 3       # 未定制 Worker 的默认值
+  worker-topk:
+    product_agent: 5     # 商品 Agent 检索 5 条
+    return_agent: 4      # 退换货 Agent 检索 4 条
+    complaint_agent: 3   # 投诉 Agent 检索 3 条
   upload:
     max-file-size: 10485760  # 10MB
     allowed-types: pdf,txt,md
