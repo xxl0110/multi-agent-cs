@@ -7,7 +7,8 @@ export const useChatStore = defineStore('chat', {
     sessionId: localStorage.getItem('cs_session_id') || '',
     messages: [],
     loading: false,
-    initialized: false
+    initialized: false,
+    pendingCitations: null
   }),
 
   getters: {
@@ -41,8 +42,10 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    addMessage(role, content) {
-      this.messages.push({ role, content })
+    addMessage(role, content, citations) {
+      const msg = { role, content }
+      if (citations) msg.citations = citations
+      this.messages.push(msg)
     },
 
     /** 追加文本到最后一条 assistant 消息（SSE 流式更新） */
@@ -60,8 +63,11 @@ export const useChatStore = defineStore('chat', {
       const last = this.messages[this.messages.length - 1]
       if (last && last.role === 'assistant') {
         last.content = text
+        if (this.pendingCitations) { last.citations = this.pendingCitations; this.pendingCitations = null }
       } else {
-        this.messages.push({ role: 'assistant', content: text })
+        const msg = { role: 'assistant', content: text }
+        if (this.pendingCitations) { msg.citations = this.pendingCitations; this.pendingCitations = null }
+        this.messages.push(msg)
       }
     },
 
@@ -115,6 +121,8 @@ export const useChatStore = defineStore('chat', {
                 }
               } else if (lastEvent === 'error') {
                 ElMessage.error(data)
+              } else if (lastEvent === 'citations') {
+                try { this.pendingCitations = JSON.parse(data) } catch (e) {}
               }
             } else if (!line && lastEvent === 'message' && accumData) {
               this.updateLastAssistant(accumData)

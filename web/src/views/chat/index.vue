@@ -95,6 +95,23 @@
             <div class="message-bubble" :class="msg.role">
               <div class="message-label" v-if="msg.role === 'assistant'">云小护</div>
               <div class="message-content" v-html="renderContent(msg.content)"></div>
+              <div v-if="msg.citations && msg.citations.length" class="citation-tags">
+                <el-popover
+                  v-for="(cite, ci) in msg.citations"
+                  :key="ci"
+                  placement="top"
+                  :width="300"
+                  trigger="hover"
+                  :content="cite.snippet || ''"
+                >
+                  <template #reference>
+                    <el-tag size="small" :type="getCitationType(cite)" class="citation-tag">
+                      [{{ ci + 1 }}] {{ cite.metadata?.fileName || cite.metadata?.sourceFile || '来源' }}
+                      <span class="citation-score">{{ (cite.score * 100).toFixed(0) }}%</span>
+                    </el-tag>
+                  </template>
+                </el-popover>
+              </div>
             </div>
           </div>
 
@@ -193,6 +210,14 @@ function renderContent(text) {
   return text
     .replace(/\n/g, '<br>')
     .replace(/- (.+)/g, '• $1')
+}
+
+function getCitationType(cite) {
+  const cat = cite.metadata?.category
+  if (cat === 'product') return 'success'
+  if (cat === 'policy') return 'warning'
+  if (cat === 'faq') return 'info'
+  return ''
 }
 
 async function handleSend() {

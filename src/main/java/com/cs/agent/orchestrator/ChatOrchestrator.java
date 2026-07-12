@@ -101,4 +101,16 @@ public class ChatOrchestrator {
     public List<Map<String, String>> getHistory(String sessionId) {
         return sessionStore.getMessages(sessionId);
     }
+
+    /** 获取最新的溯源引用 */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getLastCitations(String sessionId) {
+        CsAgentState state = sessionStates.get(sessionId);
+        if (state == null) return List.of();
+        Object val = state.value("citations").orElse(null);
+        if (val instanceof List) {
+            return (List<Map<String, Object>>) val;
+        }
+        return List.of();
+    }
 }

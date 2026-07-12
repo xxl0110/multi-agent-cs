@@ -3,6 +3,7 @@ package com.cs.agent.controller;
 import com.cs.agent.orchestrator.ChatOrchestrator;
 import com.cs.agent.service.ApprovalStore;
 import com.cs.agent.service.ApprovalStore.ApprovalRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -55,6 +56,14 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Ch
 
                 // 处理消息拿到完整回复
                 String reply = orchestrator.processMessage(sessionId, request.getMessage());
+
+                // ★ 推送溯源引用
+                List<Map<String, Object>> citations = orchestrator.getLastCitations(sessionId);
+                if (citations != null && !citations.isEmpty()) {
+                    emitter.send(SseEmitter.event()
+                            .name("citations")
+                            .data(new ObjectMapper().writeValueAsString(citations)));
+                }
 
                 if (reply == null || reply.isEmpty()) {
                     emitter.send(SseEmitter.event().name("message").data(""));

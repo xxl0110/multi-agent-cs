@@ -322,3 +322,21 @@ html, body {
   border-radius: 8px !important;
   font-family: inherit;
 }
+
+/* ===== 溯源引用标签 ===== */
+.citation-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+.citation-tag {
+  cursor: pointer;
+}
+.citation-score {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-left: 2px;
+}
