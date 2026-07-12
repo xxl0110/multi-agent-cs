@@ -52,7 +52,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Co
         log.info("📢 [ComplaintWorker] 处理: {}", userMessage);
 
         // ★ RAG: 检索 FAQ + 投诉处理指南
-        AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.FAQ);
+        AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.FAQ, "complaint_agent");
         String knowledgeContext = ctx.isEmpty() ? "" : "\n\n【参考知识】\n" + ctx.getCombinedContext();
         String enhancedPrompt = promptService.getPrompt("complaint_agent") + knowledgeContext;
 

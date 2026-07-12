@@ -52,7 +52,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Re
         log.info("🔄 [ReturnWorker] 处理: {}", userMessage);
 
         // ★ RAG: 检索退换货政策
-        AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.POLICY);
+        AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.POLICY, "return_agent");
         String knowledgeContext = ctx.isEmpty() ? "" : "\n\n【参考知识】\n" + ctx.getCombinedContext();
         String enhancedPrompt = promptService.getPrompt("return_agent") + knowledgeContext;
 

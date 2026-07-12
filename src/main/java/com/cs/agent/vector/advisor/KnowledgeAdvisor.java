@@ -1,5 +1,6 @@
 package com.cs.agent.vector.advisor;
 
+import com.cs.agent.config.KnowledgeConfig;
 import com.cs.agent.vector.advisor.metadata.CollectionSchema;
 import com.cs.agent.vector.store.KnowledgeBaseStore;
 import com.cs.agent.vector.store.SessionLogStore;
@@ -23,10 +24,13 @@ public class KnowledgeAdvisor {
 
     private final KnowledgeBaseStore knowledgeBaseStore;
     private final SessionLogStore sessionLogStore;
+    private final KnowledgeConfig knowledgeConfig;
 
-    public KnowledgeAdvisor(KnowledgeBaseStore knowledgeBaseStore, SessionLogStore sessionLogStore) {
+    public KnowledgeAdvisor(KnowledgeBaseStore knowledgeBaseStore, SessionLogStore sessionLogStore,
+                            KnowledgeConfig knowledgeConfig) {
         this.knowledgeBaseStore = knowledgeBaseStore;
         this.sessionLogStore = sessionLogStore;
+        this.knowledgeConfig = knowledgeConfig;
     }
 
     /** 检索知识库 */
@@ -34,10 +38,21 @@ public class KnowledgeAdvisor {
         return knowledgeBaseStore.searchKnowledge(query, spec);
     }
 
-    /** 按 Schema 检索（自动设置 category 过滤） */
+    /** 按 Schema 检索（自动设置 category 过滤 + Worker 定制 topK） */
     public AdvisedContext retrieveBySchema(String query, CollectionSchema schema) {
+        return retrieveBySchema(query, schema, knowledgeConfig.getDefaultTopK());
+    }
+
+    /** 按 Schema 检索（指定 Worker 名称，使用其定制 topK） */
+    public AdvisedContext retrieveBySchema(String query, CollectionSchema schema, String workerName) {
+        int topK = knowledgeConfig.getTopKForWorker(workerName);
+        return retrieveBySchema(query, schema, topK);
+    }
+
+    /** 按 Schema 检索（指定 topK） */
+    public AdvisedContext retrieveBySchema(String query, CollectionSchema schema, int topK) {
         RetrievalSpec spec = RetrievalSpec.builder()
-                .topK(3)
+                .topK(Math.min(topK, knowledgeConfig.getMaxTopK()))
                 .minScore(0.6)
                 .expr(schema.categoryExpr())
                 .build();

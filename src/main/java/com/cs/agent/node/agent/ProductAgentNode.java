@@ -52,7 +52,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Pr
         log.info("🛍️  [ProductWorker] 处理: {}", userMessage);
 
         // ★ RAG: 检索知识库
-        AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.PRODUCT);
+        AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.PRODUCT, "product_agent");
         String knowledgeContext = ctx.isEmpty() ? "" : "\n\n【参考知识】\n" + ctx.getCombinedContext();
         String enhancedPrompt = promptService.getPrompt("product_agent") + knowledgeContext;
 
