@@ -11,11 +11,13 @@ import io.milvus.v2.service.collection.request.HasCollectionReq;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
+@ConditionalOnProperty(name = "milvus.host")
 public class VectorConfig {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(VectorConfig.class);
 

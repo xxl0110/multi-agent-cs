@@ -4,6 +4,7 @@ import com.cs.agent.vector.EmbeddingService;
 import com.cs.agent.vector.MilvusClientWrapper;
 import com.cs.agent.vector.MilvusClientWrapper.KnowledgeChunk;
 import jakarta.annotation.PostConstruct;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -16,6 +17,7 @@ import java.util.*;
  * 种子数据与原项目的 Mock 数据兼容。
  */
 @Service
+@ConditionalOnProperty(name = "milvus.host")
 public class KnowledgeInitService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(KnowledgeInitService.class);
 
