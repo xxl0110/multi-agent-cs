@@ -37,7 +37,31 @@ ai:
   model-name: deepseek-v4-flash
   base-url: https://api.deepseek.com
   temperature: 0.3
+  embedding:
+    model: text-embedding-v2
+    dim: 1536
+    batch-size: 16
 
 # 会话存储：true=Redis，false/不配=内存（默认）
 cs:
   redis-session: true
+
+# ==================== 向量数据库 ====================
+milvus:
+  host: localhost
+  port: 19530
+  database: default
+  collections:
+    knowledge: cs_knowledge
+    knowledge-dim: 1536
+    session-log: cs_session_log
+
+# ==================== 知识库 ====================
+knowledge:
+  upload:
+    max-file-size: 10485760  # 10MB
+    allowed-types: pdf,txt,md
+    storage-path: ./knowledge/files
+  chunk:
+    size: 500
+    overlap: 50
