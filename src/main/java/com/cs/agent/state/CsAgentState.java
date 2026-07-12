@@ -31,7 +31,8 @@ public class CsAgentState extends AgentState {
                     () -> 0
             ),
             "userIntent", base((old, newVal) -> newVal),
-            "finalReply", base((old, newVal) -> newVal)
+            "finalReply", base((old, newVal) -> newVal),
+            "citations", base((old, newVal) -> newVal)
     ));
 
     public CsAgentState(Map<String, Object> initData) {
@@ -113,6 +114,12 @@ public class CsAgentState extends AgentState {
     /** 获取 Worker 最后回复（直接通道，不受消息列表干扰） */
     public String finalReply() {
         return value("finalReply").map(String.class::cast).orElse("");
+    }
+
+    /** 获取溯源引用列表 */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> citations() {
+        return (List<Map<String, Object>>) value("citations").orElse(List.of());
     }
 
     /** 获取最后一条 AI 回复 */

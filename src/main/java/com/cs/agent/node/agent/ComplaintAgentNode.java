@@ -2,6 +2,10 @@ package com.cs.agent.node.agent;
 
 import com.cs.agent.state.CsAgentState;
 import com.cs.agent.tool.ComplaintTools;
+import com.cs.agent.vector.advisor.AdvisedContext;
+import com.cs.agent.vector.advisor.CitedReply;
+import com.cs.agent.vector.advisor.KnowledgeAdvisor;
+import com.cs.agent.vector.advisor.metadata.CollectionSchema;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -28,31 +32,35 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Co
 
     private final ChatLanguageModel chatModel;
     private final ComplaintTools complaintTools;
+    private final KnowledgeAdvisor knowledgeAdvisor;
 
     private static final String SYSTEM_PROMPT = """
             你是电商客服系统的投诉专员。
-
-            你的职责：
-            - 受理用户投诉
-            - 记录投诉内容并提交
-            - 在必要时升级给人工客服
-
+            根据参考知识处理用户投诉。
             规则：
             - 先安抚用户情绪，再记录问题
             - 承诺会尽快处理并反馈
             - 回答有礼貌，用中文
+            - 优先参考提供的知识内容
             """;
 
     public ComplaintAgentNode(@Qualifier("workerChatModel") ChatLanguageModel chatModel,
-                              ComplaintTools complaintTools) {
+                              ComplaintTools complaintTools,
+                              KnowledgeAdvisor knowledgeAdvisor) {
         this.chatModel = chatModel;
         this.complaintTools = complaintTools;
+        this.knowledgeAdvisor = knowledgeAdvisor;
     }
 
     @Override
     public Map<String, Object> apply(CsAgentState state) {
         String userMessage = state.lastUserMessage();
         log.info("📢 [ComplaintWorker] 处理: {}", userMessage);
+
+        // ★ RAG: 检索 FAQ + 投诉处理指南
+        AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.FAQ);
+        String knowledgeContext = ctx.isEmpty() ? "" : "\n\n【参考知识】\n" + ctx.getCombinedContext();
+        String enhancedPrompt = SYSTEM_PROMPT + knowledgeContext;
 
         List<ToolSpecification> tools = List.of(
                 ToolSpecification.builder()
@@ -69,7 +77,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Co
         );
 
         var response = chatModel.generate(
-                List.of(SystemMessage.from(SYSTEM_PROMPT), UserMessage.from(userMessage)),
+                List.of(SystemMessage.from(enhancedPrompt), UserMessage.from(userMessage)),
                 tools
         );
 
@@ -77,7 +85,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Co
         if (response.content().hasToolExecutionRequests()) {
             var requests = response.content().toolExecutionRequests();
             List<ChatMessage> msgs = new ArrayList<>();
-            msgs.add(SystemMessage.from(SYSTEM_PROMPT));
+            msgs.add(SystemMessage.from(enhancedPrompt));
             msgs.add(UserMessage.from(userMessage));
             msgs.add(response.content());
 
@@ -99,14 +107,24 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Co
             reply = response.content().text();
         }
 
-        log.info("  → 回复: {}", reply);
+        // ★ 溯源绑定
+        CitedReply citedReply = knowledgeAdvisor.cite(reply, ctx.getDocuments());
+        knowledgeAdvisor.trackConsumption(state.sessionId(), "complaint_agent", citedReply);
+
+        log.info("  → 回复: {}", citedReply.getReply());
 
         return Map.of(
-                "messages", Map.of("role", "assistant", "content", reply),
-                "finalReply", reply,
+                "messages", Map.of("role", "assistant", "content", citedReply.getReply()),
+                "finalReply", citedReply.getReply(),
+                "citations", citedReply.getCitations().stream().map(c -> Map.of(
+                        "docId", c.getDocId(),
+                        "score", c.getScore(),
+                        "snippet", c.getSnippet(),
+                        "metadata", c.getMetadata()
+                )).toList(),
                 "workerResults", Map.of(
                         "workerName", "complaint_agent",
-                        "result", reply,
+                        "result", citedReply.getReply(),
                         "success", true
                 )
         );

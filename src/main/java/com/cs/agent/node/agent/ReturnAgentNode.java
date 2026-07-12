@@ -2,6 +2,10 @@ package com.cs.agent.node.agent;
 
 import com.cs.agent.state.CsAgentState;
 import com.cs.agent.tool.ReturnTools;
+import com.cs.agent.vector.advisor.AdvisedContext;
+import com.cs.agent.vector.advisor.CitedReply;
+import com.cs.agent.vector.advisor.KnowledgeAdvisor;
+import com.cs.agent.vector.advisor.metadata.CollectionSchema;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -28,30 +32,34 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Re
 
     private final ChatLanguageModel chatModel;
     private final ReturnTools returnTools;
+    private final KnowledgeAdvisor knowledgeAdvisor;
 
     private static final String SYSTEM_PROMPT = """
             你是电商客服系统的退换货专员。
-
-            你的职责：
-            - 查询退换货资格和规则
-            - 计算退款金额
-            - 查询退换货进度
-
+            根据参考知识回答退换货相关问题。
             规则：
             - 用户需要提供订单号才能查询
             - 回答简洁友好，用中文
+            - 优先参考提供的知识内容
             """;
 
     public ReturnAgentNode(@Qualifier("workerChatModel") ChatLanguageModel chatModel,
-                           ReturnTools returnTools) {
+                           ReturnTools returnTools,
+                           KnowledgeAdvisor knowledgeAdvisor) {
         this.chatModel = chatModel;
         this.returnTools = returnTools;
+        this.knowledgeAdvisor = knowledgeAdvisor;
     }
 
     @Override
     public Map<String, Object> apply(CsAgentState state) {
         String userMessage = state.lastUserMessage();
         log.info("🔄 [ReturnWorker] 处理: {}", userMessage);
+
+        // ★ RAG: 检索退换货政策
+        AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.POLICY);
+        String knowledgeContext = ctx.isEmpty() ? "" : "\n\n【参考知识】\n" + ctx.getCombinedContext();
+        String enhancedPrompt = SYSTEM_PROMPT + knowledgeContext;
 
         List<ToolSpecification> tools = List.of(
                 ToolSpecification.builder()
@@ -67,7 +75,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Re
         );
 
         var response = chatModel.generate(
-                List.of(SystemMessage.from(SYSTEM_PROMPT), UserMessage.from(userMessage)),
+                List.of(SystemMessage.from(enhancedPrompt), UserMessage.from(userMessage)),
                 tools
         );
 
@@ -75,7 +83,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Re
         if (response.content().hasToolExecutionRequests()) {
             var requests = response.content().toolExecutionRequests();
             List<ChatMessage> msgs = new ArrayList<>();
-            msgs.add(SystemMessage.from(SYSTEM_PROMPT));
+            msgs.add(SystemMessage.from(enhancedPrompt));
             msgs.add(UserMessage.from(userMessage));
             msgs.add(response.content());
 
@@ -94,14 +102,24 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Re
             reply = response.content().text();
         }
 
-        log.info("  → 回复: {}", reply);
+        // ★ 溯源绑定
+        CitedReply citedReply = knowledgeAdvisor.cite(reply, ctx.getDocuments());
+        knowledgeAdvisor.trackConsumption(state.sessionId(), "return_agent", citedReply);
+
+        log.info("  → 回复: {}", citedReply.getReply());
 
         return Map.of(
-                "messages", Map.of("role", "assistant", "content", reply),
-                "finalReply", reply,
+                "messages", Map.of("role", "assistant", "content", citedReply.getReply()),
+                "finalReply", citedReply.getReply(),
+                "citations", citedReply.getCitations().stream().map(c -> Map.of(
+                        "docId", c.getDocId(),
+                        "score", c.getScore(),
+                        "snippet", c.getSnippet(),
+                        "metadata", c.getMetadata()
+                )).toList(),
                 "workerResults", Map.of(
                         "workerName", "return_agent",
-                        "result", reply,
+                        "result", citedReply.getReply(),
                         "success", true
                 )
         );

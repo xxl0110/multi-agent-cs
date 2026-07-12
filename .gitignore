@@ -16,3 +16,5 @@ application-local.yml
 *.key
 面试准备.md
 项目设计文档.md
+target/milvus-classes/
+.superpowers/
