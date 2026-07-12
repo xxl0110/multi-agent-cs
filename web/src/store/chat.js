@@ -8,7 +8,8 @@ export const useChatStore = defineStore('chat', {
     messages: [],
     loading: false,
     initialized: false,
-    pendingCitations: null
+    pendingCitations: null,
+    currentNode: ''
   }),
 
   getters: {
@@ -121,6 +122,8 @@ export const useChatStore = defineStore('chat', {
                 }
               } else if (lastEvent === 'error') {
                 ElMessage.error(data)
+              } else if (lastEvent === 'node') {
+                this.currentNode = data
               } else if (lastEvent === 'citations') {
                 try { this.pendingCitations = JSON.parse(data) } catch (e) {}
               }

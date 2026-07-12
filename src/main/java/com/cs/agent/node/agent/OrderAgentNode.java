@@ -2,6 +2,7 @@ package com.cs.agent.node.agent;
 
 import com.cs.agent.state.CsAgentState;
 import com.cs.agent.tool.OrderTools;
+import com.cs.agent.service.PromptService;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -27,20 +28,18 @@ public class OrderAgentNode implements NodeAction<CsAgentState> {
 
     private final ChatLanguageModel chatModel;
     private final OrderTools orderTools;
+    private final PromptService promptService;
 
     /** 订单号格式：ORD 开头 + 数字，或纯数字 */
     private static final Pattern ORDER_ID_PATTERN =
             Pattern.compile("(ORD\\d{5,}|\\d{8,})");
 
-    private static final String SYSTEM_PROMPT = """
-            你是电商客服系统的订单专员。
-            根据用户问题和查询到的数据生成回答，简洁友好，用中文。
-            """;
-
     public OrderAgentNode(@Qualifier("workerChatModel") ChatLanguageModel chatModel,
-                          OrderTools orderTools) {
+                          OrderTools orderTools,
+                          PromptService promptService) {
         this.chatModel = chatModel;
         this.orderTools = orderTools;
+        this.promptService = promptService;
     }
 
     @Override
@@ -60,10 +59,11 @@ public class OrderAgentNode implements NodeAction<CsAgentState> {
         }
 
         // 3️⃣ 用 LLM 生成自然语言回复
+        String systemPrompt = promptService.getPrompt("order_agent");
         String reply;
         if (!orderData.isEmpty()) {
             reply = chatModel.generate(List.of(
-                    SystemMessage.from(SYSTEM_PROMPT),
+                    SystemMessage.from(systemPrompt),
                     UserMessage.from("用户问题：" + userMessage
                             + "\n\n数据库查询到的数据：\n" + orderData
                             + "\n\n请根据以上数据回答用户，简洁友好。")
@@ -71,14 +71,14 @@ public class OrderAgentNode implements NodeAction<CsAgentState> {
         } else if (userMessage.toLowerCase().contains("物流") || userMessage.contains("物流")) {
             String logisticsData = orderTools.queryLogistics(orderId);
             reply = chatModel.generate(List.of(
-                    SystemMessage.from(SYSTEM_PROMPT),
+                    SystemMessage.from(systemPrompt),
                     UserMessage.from("用户问题：" + userMessage
                             + "\n\n查询到的物流信息：\n" + logisticsData)
             )).content().text();
         } else {
             // 无订单号，让 LLM 自然询问
             reply = chatModel.generate(List.of(
-                    SystemMessage.from(SYSTEM_PROMPT
+                    SystemMessage.from(systemPrompt
                             + "\n注意：用户还没有提供订单号，请礼貌地询问。"),
                     UserMessage.from(userMessage)
             )).content().text();

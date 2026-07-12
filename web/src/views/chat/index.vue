@@ -120,6 +120,19 @@
             <el-avatar :size="36" class="msg-avatar">🤖</el-avatar>
             <div class="message-bubble assistant">
               <div class="message-label">云小护</div>
+              <div class="graph-progress" v-if="currentNode">
+                <span class="graph-node" :class="currentNode">
+                  <el-icon :size="14" class="graph-icon"><Loading /></el-icon>
+                  {{ currentNode === 'supervisor' ? '🤖 调度中' :
+                     currentNode === 'order_agent' ? '📦 查订单' :
+                     currentNode === 'product_agent' ? '🛍️ 查商品' :
+                     currentNode === 'return_agent' ? '🔄 退换货' :
+                     currentNode === 'complaint_agent' ? '📢 投诉处理' :
+                     currentNode === 'finish' ? '🏁 完成' :
+                     currentNode === 'interceptor' ? '🔒 拦截检查' :
+                     currentNode === 'approval' ? '✅ 审批' : currentNode }}
+                </span>
+              </div>
               <div class="typing-indicator">
                 <span></span><span></span><span></span>
               </div>
@@ -164,11 +177,11 @@ import { useChatStore } from '@/store/chat'
 import { storeToRefs } from 'pinia'
 import {
   Delete, Plus, Promotion, MagicStick, ChatDotSquare,
-  Van, Goods, Refresh, WarningFilled
+  Van, Goods, Refresh, WarningFilled, Loading
 } from '@element-plus/icons-vue'
 
 const chatStore = useChatStore()
-const { messages, loading, initialized } = storeToRefs(chatStore)
+const { messages, loading, initialized, currentNode } = storeToRefs(chatStore)
 
 const inputText = ref('')
 const messageArea = ref(null)

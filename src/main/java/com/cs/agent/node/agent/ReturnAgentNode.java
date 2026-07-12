@@ -2,6 +2,7 @@ package com.cs.agent.node.agent;
 
 import com.cs.agent.state.CsAgentState;
 import com.cs.agent.tool.ReturnTools;
+import com.cs.agent.service.PromptService;
 import com.cs.agent.vector.advisor.AdvisedContext;
 import com.cs.agent.vector.advisor.CitedReply;
 import com.cs.agent.vector.advisor.KnowledgeAdvisor;
@@ -33,22 +34,16 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Re
     private final ChatLanguageModel chatModel;
     private final ReturnTools returnTools;
     private final KnowledgeAdvisor knowledgeAdvisor;
-
-    private static final String SYSTEM_PROMPT = """
-            你是电商客服系统的退换货专员。
-            根据参考知识回答退换货相关问题。
-            规则：
-            - 用户需要提供订单号才能查询
-            - 回答简洁友好，用中文
-            - 优先参考提供的知识内容
-            """;
+    private final PromptService promptService;
 
     public ReturnAgentNode(@Qualifier("workerChatModel") ChatLanguageModel chatModel,
                            ReturnTools returnTools,
-                           KnowledgeAdvisor knowledgeAdvisor) {
+                           KnowledgeAdvisor knowledgeAdvisor,
+                           PromptService promptService) {
         this.chatModel = chatModel;
         this.returnTools = returnTools;
         this.knowledgeAdvisor = knowledgeAdvisor;
+        this.promptService = promptService;
     }
 
     @Override
@@ -59,7 +54,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Re
         // ★ RAG: 检索退换货政策
         AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.POLICY);
         String knowledgeContext = ctx.isEmpty() ? "" : "\n\n【参考知识】\n" + ctx.getCombinedContext();
-        String enhancedPrompt = SYSTEM_PROMPT + knowledgeContext;
+        String enhancedPrompt = promptService.getPrompt("return_agent") + knowledgeContext;
 
         List<ToolSpecification> tools = List.of(
                 ToolSpecification.builder()

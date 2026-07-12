@@ -2,6 +2,7 @@ package com.cs.agent.node.agent;
 
 import com.cs.agent.state.CsAgentState;
 import com.cs.agent.tool.ComplaintTools;
+import com.cs.agent.service.PromptService;
 import com.cs.agent.vector.advisor.AdvisedContext;
 import com.cs.agent.vector.advisor.CitedReply;
 import com.cs.agent.vector.advisor.KnowledgeAdvisor;
@@ -33,23 +34,16 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Co
     private final ChatLanguageModel chatModel;
     private final ComplaintTools complaintTools;
     private final KnowledgeAdvisor knowledgeAdvisor;
-
-    private static final String SYSTEM_PROMPT = """
-            你是电商客服系统的投诉专员。
-            根据参考知识处理用户投诉。
-            规则：
-            - 先安抚用户情绪，再记录问题
-            - 承诺会尽快处理并反馈
-            - 回答有礼貌，用中文
-            - 优先参考提供的知识内容
-            """;
+    private final PromptService promptService;
 
     public ComplaintAgentNode(@Qualifier("workerChatModel") ChatLanguageModel chatModel,
                               ComplaintTools complaintTools,
-                              KnowledgeAdvisor knowledgeAdvisor) {
+                              KnowledgeAdvisor knowledgeAdvisor,
+                              PromptService promptService) {
         this.chatModel = chatModel;
         this.complaintTools = complaintTools;
         this.knowledgeAdvisor = knowledgeAdvisor;
+        this.promptService = promptService;
     }
 
     @Override
@@ -60,7 +54,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Co
         // ★ RAG: 检索 FAQ + 投诉处理指南
         AdvisedContext ctx = knowledgeAdvisor.retrieveBySchema(userMessage, CollectionSchema.FAQ);
         String knowledgeContext = ctx.isEmpty() ? "" : "\n\n【参考知识】\n" + ctx.getCombinedContext();
-        String enhancedPrompt = SYSTEM_PROMPT + knowledgeContext;
+        String enhancedPrompt = promptService.getPrompt("complaint_agent") + knowledgeContext;
 
         List<ToolSpecification> tools = List.of(
                 ToolSpecification.builder()

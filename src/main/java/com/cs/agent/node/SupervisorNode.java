@@ -1,6 +1,7 @@
 package com.cs.agent.node;
 
 import com.cs.agent.state.CsAgentState;
+import com.cs.agent.service.PromptService;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 
 import org.bsc.langgraph4j.action.NodeAction;
@@ -26,31 +27,12 @@ public class SupervisorNode implements NodeAction<CsAgentState> {
 private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SupervisorNode.class);
 
     private final ChatLanguageModel chatModel;
+    private final PromptService promptService;
 
-    private static final String SUPERVISOR_PROMPT = """
-            你是一个电商客服系统的智能调度员（Supervisor）。
-
-            你的职责：
-            1. 分析用户的输入，判断应该由哪个专用客服来处理
-            2. **只有第一轮才需要路由**，后续轮次都输出 FINISH
-            3. 注意：如果用户输入的是订单号（ORD开头的数字），这通常是上一步被问到的补充信息
-
-            可用 Worker（只能从以下选择）：
-            - order_agent: 订单查询、物流查询、订单修改
-            - product_agent: 商品搜索、商品推荐、商品详情查询
-            - return_agent: 退换货申请、退款计算、退换货进度查询
-            - complaint_agent: 投诉处理、升级人工客服
-
-            输出格式（严格 JSON，不要多余内容）：
-            {"next": "order_agent"}
-            {"next": "product_agent"}
-            {"next": "return_agent"}
-            {"next": "complaint_agent"}
-            {"next": "FINISH"}
-            """;
-
-    public SupervisorNode(@Qualifier("supervisorChatModel") ChatLanguageModel chatModel) {
+    public SupervisorNode(@Qualifier("supervisorChatModel") ChatLanguageModel chatModel,
+                          PromptService promptService) {
         this.chatModel = chatModel;
+        this.promptService = promptService;
     }
 
     @Override
@@ -80,7 +62,7 @@ private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Su
         }
 
         // ===== 第一轮：走 LLM 决策 =====
-        StringBuilder prompt = new StringBuilder(SUPERVISOR_PROMPT);
+        StringBuilder prompt = new StringBuilder(promptService.getPrompt("supervisor"));
         prompt.append("\n\n【当前对话历史】\n");
         for (var msg : state.messages()) {
             if (msg instanceof dev.langchain4j.data.message.UserMessage userMsg) {
